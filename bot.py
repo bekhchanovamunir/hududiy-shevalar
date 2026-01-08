@@ -25,7 +25,7 @@ dp = Dispatcher()
 async def send_welcome(message: types.Message):
     # BU YERGA Render'dan olgan sayt manzilingizni qo'ying
     # Hozircha test uchun o'z saytingiz linkini yozib turing
-    web_app_url = "https://SIZNING_SAYTINGIZ.onrender.com" 
+    web_app_url = "https://hududiy-shevalar.onrender.com" 
     
     markup = ReplyKeyboardMarkup(
         keyboard=[
@@ -83,4 +83,5 @@ if __name__ == '__main__':
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
+
         print("Bot to'xtatildi")
