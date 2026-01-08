@@ -25,7 +25,7 @@ dp = Dispatcher()
 async def send_welcome(message: types.Message):
     # BU YERGA Render'dan olgan sayt manzilingizni qo'ying
     # Hozircha test uchun o'z saytingiz linkini yozib turing
-    web_app_url = "https://hududiy-shevalar.onrender.com" 
+    web_app_url = "https://hududiy-shevalar.onrender.com"
     
     markup = ReplyKeyboardMarkup(
         keyboard=[
@@ -85,3 +85,4 @@ if __name__ == '__main__':
     except (KeyboardInterrupt, SystemExit):
 
         print("Bot to'xtatildi")
+
