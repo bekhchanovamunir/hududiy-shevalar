@@ -3,15 +3,19 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-# Excel faylni yuklash
-try:
-    df = pd.read_excel('sheva_lugat.xlsx')
-    # Ustun nomlaridagi bo'shliqlarni olib tashlash
-    df.columns = df.columns.str.strip()
-    print("Excel fayl muvaffaqiyatli yuklandi!")
-except Exception as e:
-    print(f"Xato: {e}")
-    df = pd.DataFrame()
+def load_data():
+    try:
+        # Excelni yuklash va barcha kataklarni matnga aylantirish
+        data = pd.read_excel('sheva_lugat.xlsx')
+        data.columns = data.columns.str.strip()
+        # Bo'sh kataklarni bo'sh matn bilan to'ldirish
+        data = data.fillna('')
+        return data
+    except Exception as e:
+        print(f"Excel yuklashda xato: {e}")
+        return pd.DataFrame()
+
+df = load_data()
 
 @app.route('/')
 def index():
@@ -23,17 +27,15 @@ def search():
     if not query or df.empty:
         return jsonify([])
 
-    # Qidiruv logikasi: barcha ustunlar bo'ylab qidirish
-    # Bu qism foydalanuvchi yozgan so'z qaysi ustunda bo'lishidan qat'i nazar topadi
-    mask = df.apply(lambda row: row.astype(str).str.contains(query, case=False, na=False).any(), axis=1)
-    filtered_df = df[mask]
-
+    # Qidiruv: Har bir qatorda so'z borligini tekshirish
     results = []
-    for _, row in filtered_df.iterrows():
-        # Ma'lumotlarni lug'at ko'rinishida yuborish
-        results.append(row.to_dict())
+    for _, row in df.iterrows():
+        # Qatordagi barcha qiymatlarni bitta matnga birlashtirib qidirish
+        row_content = " ".join(row.astype(str)).lower()
+        if query in row_content:
+            results.append(row.to_dict())
     
-    return jsonify(results[:10]) # Dastlabki 10 ta natijani qaytarish
+    return jsonify(results[:10])
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
