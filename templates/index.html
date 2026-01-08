@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O'zbekiston Shevalari | Interaktiv Xarita</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        #map { width: 100%; height: 100vh; z-index: 1; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+        .region-label {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #1e293b !important;
+            font-weight: 800 !important;
+            font-size: 10px !important;
+            text-transform: uppercase;
+            text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+    <div id="map"></div>
+
+    <div class="fixed top-4 right-4 z-[1000] w-[320px] sm:w-[380px] max-h-[80vh] flex flex-col">
+        <div class="glass-panel rounded-[24px] p-5 flex flex-col h-full overflow-hidden border border-slate-100">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <span class="text-white text-lg">🗺️</span>
+                </div>
+                <div>
+                    <h1 class="text-lg font-extrabold text-slate-800 tracking-tight">Sheva Lug'ati</h1>
+                </div>
+            </div>
+
+            <div class="relative mb-4">
+                <input type="text" id="search" placeholder="So'z yozing..." 
+                       class="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-50 rounded-xl outline-none focus:border-indigo-500 focus:bg-white transition-all text-sm font-semibold">
+                <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</div>
+            </div>
+
+            <div id="result-box" class="hidden flex-col overflow-hidden">
+                <div class="bg-indigo-600 p-4 rounded-xl mb-4 shadow-lg shadow-indigo-100">
+                    <span class="text-[9px] font-bold text-indigo-200 uppercase tracking-widest block">Adabiy til</span>
+                    <p id="adabiy-val" class="text-xl font-extrabold text-white italic"></p>
+                </div>
+                <div class="overflow-y-auto space-y-2 pr-1" id="dialects-list" style="max-height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Oynani to'liq ochish
+
+        var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([41.3, 64.5], 6);
+        var geoLayer;
+
+        fetch('/get_map')
+            .then(res => res.json())
+            .then(data => {
+                geoLayer = L.geoJson(data, {
+                    filter: (f) => f.properties.ADM1_UZ !== "Toshkent sh.",
+                    style: { fillColor: "#ffffff", weight: 1.5, color: "#e2e8f0", fillOpacity: 1 },
+                    onEachFeature: function(f, l) {
+                        l.fullRegionName = f.properties.ADM1_UZ.toLowerCase();
+                        l.bindTooltip(f.properties.ADM1_UZ, { permanent: true, direction: 'center', className: 'region-label' }).openTooltip();
+                    }
+                }).addTo(map);
+            });
+
+        document.getElementById('search').addEventListener('input', async (e) => {
+            const word = e.target.value.trim();
+            if (word.length < 2) {
+                document.getElementById('result-box').classList.add('hidden');
+                return;
+            }
+
+            const res = await fetch('/search', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({word: word})
+            });
+            const result = await res.json();
+
+            if (result.found) {
+                document.getElementById('result-box').classList.remove('hidden');
+                document.getElementById('adabiy-val').innerText = result.data.adabiy;
+
+                const config = {
+                    'andijon': '#f59e0b', 'buxoro': '#3b82f6',
+                    'qashqadaryo': '#ec4899', 'samarqand': '#10b981', 'xorazm': '#f97316'
+                };
+
+                geoLayer.eachLayer(layer => {
+                    let color = "#f8fafc";
+                    for (let key in config) {
+                        if (layer.fullRegionName.includes(key)) color = config[key];
+                    }
+                    layer.setStyle({ fillColor: color, fillOpacity: 0.8 });
+                });
+
+                let html = '';
+                for (let key in config) {
+                    html += `<div class="p-3 bg-white border border-slate-100 rounded-xl shadow-sm" style="border-left: 4px solid ${config[key]}">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase">${key}</span>
+                                <p class="text-slate-800 font-bold text-sm">${result.data.dialects[key] || '---'}</p>
+                             </div>`;
+                }
+                document.getElementById('dialects-list').innerHTML = html;
+            }
+        });
+    </script>
+</body>
+</html>
