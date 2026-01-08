@@ -19,10 +19,12 @@ dp = Dispatcher()
 # --- MA'LUMOTLARNI YUKLASH ---
 def load_data():
     try:
+        # Excelni yuklash va ustunlardagi ortiqcha bo'shliqlarni olib tashlash
         df = pd.read_excel('sheva_lugat.xlsx')
-        df.columns = df.columns.str.strip().str.lower()
+        df.columns = df.columns.str.strip()
         return df.fillna('')
-    except:
+    except Exception as e:
+        print(f"Xato: {e}")
         return pd.DataFrame()
 
 df = load_data()
@@ -34,8 +36,7 @@ def index():
 
 @app.route('/get_map')
 def get_map():
-    # GitHub'dagi haqiqiy fayl nomini ko'rsatish
-    file_path = 'uzbekistan_regional.geojson' 
+    file_path = 'uzbekistan_regional.geojson'
     if os.path.exists(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             return jsonify(json.load(f))
@@ -50,18 +51,20 @@ def search():
         return jsonify({"found": False})
 
     for _, row in df.iterrows():
-        # Barcha ustunlar bo'ylab qidirish
-        if any(word in str(val).lower() for val in row.values):
+        # Qatordagi barcha matnlarni birlashtirib qidirish
+        row_str = " ".join(row.astype(str)).lower()
+        if word in row_str:
             return jsonify({
                 "found": True,
                 "data": {
-                    "adabiy": row.get('adabiy til', 'Topilmadi'),
+                    # SIZNING JADVALINGIZDAGI USTUN NOMLARI BILAN MOSLASHTIRILDI
+                    "adabiy": row.get('Adabiy shakl', 'Topilmadi'),
                     "dialects": {
-                        "andijon": row.get('andijon', ''),
-                        "buxoro": row.get('buxoro', ''),
-                        "qashqadaryo": row.get('qashqadaryo', ''),
-                        "samarqand": row.get('samarqand', ''),
-                        "xorazm": row.get('xorazm', '')
+                        "andijon": row.get('Andijon(qarluq)', ''),
+                        "buxoro": row.get('Buxoro(qipchoq)', ''),
+                        "qashqadaryo": row.get('Qashqadaryo(qipchoq)', ''),
+                        "samarqand": row.get('Samarqand(qipchoq)', ''),
+                        "xorazm": row.get('Xorazm(o\'g\'uz)', '')
                     }
                 }
             })
@@ -74,19 +77,11 @@ async def send_welcome(message: types.Message):
         keyboard=[[KeyboardButton(text="🗺️ Xaritani ochish", web_app=WebAppInfo(url=WEB_APP_URL))]],
         resize_keyboard=True
     )
-    await message.answer("Xush kelibsiz! Quyidagi tugma orqali lug'atni oching:", reply_markup=markup)
+    await message.answer("Xush kelibsiz! Xarita orqali shevalarni izlab ko'ring:", reply_markup=markup)
 
 async def run_bot():
-    try:
-        await dp.start_polling(bot)
-    except Exception as e:
-        print(f"Botda xato: {e}")
-
-def start_bot_thread():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(run_bot())
+    await dp.start_polling(bot)
 
 if __name__ == '__main__':
-    threading.Thread(target=start_bot_thread, daemon=True).start()
+    threading.Thread(target=lambda: asyncio.run(run_bot()), daemon=True).start()
     app.run(host='0.0.0.0', port=10000)
